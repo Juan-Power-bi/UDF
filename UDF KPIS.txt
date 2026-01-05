@@ -1,0 +1,1977 @@
+DEFINE
+    // ========================================
+    // UDF PRINCIPAL: RevenueCardSelector
+    // ACTUALIZADO con 17 tipos - VERSIÓN UNIVERSAL
+    // ========================================
+    FUNCTION RevenueCardSelector = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING,
+        cardType : STRING
+    ) =>
+    
+    SWITCH(
+        cardType,
+        "basic", BasicCard(valueColumn, dateColumn, cardTitle),
+        "trend", TrendCard(valueColumn, dateColumn, cardTitle),
+        "delta", DeltaCard(valueColumn, dateColumn, cardTitle),
+        "forecast", ForecastCard(valueColumn, dateColumn, cardTitle),
+        "performance", PerformanceCard(valueColumn, dateColumn, cardTitle),
+        "percent", PercentCard(valueColumn, dateColumn, cardTitle),
+        "heatmap", HeatmapCard(valueColumn, dateColumn, cardTitle),
+        "momentum", MomentumCard(valueColumn, dateColumn, cardTitle),
+        "consistency", ConsistencyCard(valueColumn, dateColumn, cardTitle),
+        "volatility", VolatilityCard(valueColumn, dateColumn, cardTitle),
+        "seasonality", SeasonalityCard(valueColumn, dateColumn, cardTitle),
+        "acceleration", AccelerationCard(valueColumn, dateColumn, cardTitle),
+        "runway", RunwayCard(valueColumn, dateColumn, cardTitle),
+        "benchmark", BenchmarkCard(valueColumn, dateColumn, cardTitle),
+        "distribution", DistributionCard(valueColumn, dateColumn, cardTitle),
+        "peaks", PeaksValleysCard(valueColumn, dateColumn, cardTitle),
+        "targets", TargetTrackerCard(valueColumn, dateColumn, cardTitle),
+        "Tipo no válido"
+    )
+
+    // ========================================
+    // 1. BasicCard
+    // ========================================
+    FUNCTION BasicCard = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING
+    ) =>
+    
+    VAR CurrentYear = YEAR(TODAY())
+    
+    VAR Revenue_CY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear
+        )
+    
+    VAR Revenue_LY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear - 1
+        )
+    
+    VAR Growth = DIVIDE(Revenue_CY - Revenue_LY, Revenue_LY, 0)
+    VAR Growth_Formatted = FORMAT(ABS(Growth), "0.0%")
+    VAR Growth_Symbol = IF(Growth >= 0, "↑", "↓")
+    VAR Growth_Text = Growth_Symbol & " " & Growth_Formatted
+    
+    VAR Growth_BG_Color = IF(Growth >= 0, "#A8E6CF", "#FFB3BA")
+    VAR Growth_Text_Color = IF(Growth >= 0, "#00783E", "#C41E3A")
+    
+    VAR Revenue_CY_Display = FORMAT(Revenue_CY, "$#,0")
+    VAR Revenue_LY_Display = FORMAT(Revenue_LY, "$#,0")
+    
+    VAR MonthlyData = 
+        ADDCOLUMNS(
+            UNION(
+                ROW("Month", 1, "MonthLabel", "J"),
+                ROW("Month", 2, "MonthLabel", "F"),
+                ROW("Month", 3, "MonthLabel", "M"),
+                ROW("Month", 4, "MonthLabel", "A"),
+                ROW("Month", 5, "MonthLabel", "M"),
+                ROW("Month", 6, "MonthLabel", "J"),
+                ROW("Month", 7, "MonthLabel", "J"),
+                ROW("Month", 8, "MonthLabel", "A"),
+                ROW("Month", 9, "MonthLabel", "S"),
+                ROW("Month", 10, "MonthLabel", "O"),
+                ROW("Month", 11, "MonthLabel", "N"),
+                ROW("Month", 12, "MonthLabel", "D")
+            ),
+            "Revenue", 
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear
+                )
+        )
+    
+    VAR MaxRevenue = MAXX(MonthlyData, [Revenue])
+    VAR MaxBarHeight = 200
+    
+    VAR BarChart = 
+        CONCATENATEX(
+            MonthlyData,
+            VAR MonthNum = [Month]
+            VAR MonthRev = [Revenue]
+            VAR MonthLabel = [MonthLabel]
+            VAR BarHeight = IF(MaxRevenue > 0, ROUND((MonthRev / MaxRevenue) * MaxBarHeight, 0), 0)
+            VAR BarY = MaxBarHeight - BarHeight + 20
+            VAR BarX = 550 + ((MonthNum - 1) * 50)
+            VAR LabelX = BarX + 17.5
+            RETURN
+            "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='#FFC107' rx='4'/>" &
+            "<text x='" & LabelX & "' y='250' font-family='Segoe UI' font-size='20' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+            "", [Month], ASC
+        )
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='400' viewBox='0 0 1200 400'>" &
+    "<rect width='1200' height='400' fill='#FFFFFF' rx='12'/>" &
+    "<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & "</text>" &
+    "<text x='40' y='160' font-family='Segoe UI' font-size='72' font-weight='700' fill='#000000'>" & Revenue_CY_Display & "</text>" &
+    "<rect x='40' y='180' width='180' height='50' rx='8' fill='" & Growth_BG_Color & "'/>" &
+    "<text x='130' y='213' font-family='Segoe UI' font-size='24' font-weight='600' fill='" & Growth_Text_Color & "' text-anchor='middle'>" & Growth_Text & "</text>" &
+    "<text x='40' y='280' font-family='Segoe UI' font-size='28' fill='#757575'>Last year </text>" &
+    "<text x='180' y='280' font-family='Segoe UI' font-size='28' fill='#000000' font-weight='600'>" & Revenue_LY_Display & "</text>" &
+    BarChart &
+    "</svg>"
+
+    // ========================================
+    // 2. TrendCard
+    // ========================================
+    FUNCTION TrendCard = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING
+    ) =>
+    
+    VAR CurrentYear = YEAR(TODAY())
+    
+    VAR Revenue_CY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear
+        )
+    
+    VAR MonthlyData = 
+        ADDCOLUMNS(
+            UNION(
+                ROW("Month", 1, "MonthLabel", "J"),
+                ROW("Month", 2, "MonthLabel", "F"),
+                ROW("Month", 3, "MonthLabel", "M"),
+                ROW("Month", 4, "MonthLabel", "A"),
+                ROW("Month", 5, "MonthLabel", "M"),
+                ROW("Month", 6, "MonthLabel", "J"),
+                ROW("Month", 7, "MonthLabel", "J"),
+                ROW("Month", 8, "MonthLabel", "A"),
+                ROW("Month", 9, "MonthLabel", "S"),
+                ROW("Month", 10, "MonthLabel", "O"),
+                ROW("Month", 11, "MonthLabel", "N"),
+                ROW("Month", 12, "MonthLabel", "D")
+            ),
+            "Revenue", 
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear
+                )
+        )
+    
+    VAR AvgRevenue = AVERAGEX(MonthlyData, [Revenue])
+    VAR MaxRevenue = MAXX(MonthlyData, [Revenue])
+    VAR MaxBarHeight = 180
+    
+    VAR FirstHalf = SUMX(FILTER(MonthlyData, [Month] <= 6), [Revenue])
+    VAR SecondHalf = SUMX(FILTER(MonthlyData, [Month] > 6), [Revenue])
+    VAR TrendValue = DIVIDE(SecondHalf - FirstHalf, FirstHalf, 0)
+    VAR TrendIcon = IF(TrendValue > 0, "📈", IF(TrendValue < 0, "📉", "➡️"))
+    
+    VAR AvgY = IF(MaxRevenue > 0, MaxBarHeight - ROUND((AvgRevenue / MaxRevenue) * MaxBarHeight, 0) + 40, 110)
+    
+    VAR TrendChart = 
+        CONCATENATEX(
+            MonthlyData,
+            VAR MonthNum = [Month]
+            VAR MonthRev = [Revenue]
+            VAR MonthLabel = [MonthLabel]
+            VAR BarHeight = IF(MaxRevenue > 0, ROUND((MonthRev / MaxRevenue) * MaxBarHeight, 0), 0)
+            VAR BarY = MaxBarHeight - BarHeight + 40
+            VAR BarX = 550 + ((MonthNum - 1) * 50)
+            VAR LabelX = BarX + 17.5
+            VAR BarColor = IF(MonthRev >= AvgRevenue, "#4CAF50", "#FFC107")
+            RETURN
+            "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+            "<text x='" & LabelX & "' y='250' font-family='Segoe UI' font-size='18' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+            "", [Month], ASC
+        )
+    
+    VAR Revenue_CY_Display = FORMAT(Revenue_CY, "$#,0")
+    VAR AvgRevenue_Display = FORMAT(AvgRevenue, "$#,0")
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='400' viewBox='0 0 1200 400'>" &
+    "<rect width='1200' height='400' fill='#FFFFFF' rx='12'/>" &
+    "<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " " & CurrentYear & " " & TrendIcon & "</text>" &
+    "<text x='40' y='160' font-family='Segoe UI' font-size='72' font-weight='700' fill='#000000'>" & Revenue_CY_Display & "</text>" &
+    "<text x='40' y='220' font-family='Segoe UI' font-size='24' fill='#757575'>Avg per month </text>" &
+    "<text x='230' y='220' font-family='Segoe UI' font-size='24' fill='#2196F3' font-weight='600'>" & AvgRevenue_Display & "</text>" &
+    "<rect x='40' y='250' width='20' height='20' fill='#4CAF50' rx='3'/>" &
+    "<text x='70' y='265' font-family='Segoe UI' font-size='20' fill='#757575'>Above avg</text>" &
+    "<rect x='210' y='250' width='20' height='20' fill='#FFC107' rx='3'/>" &
+    "<text x='240' y='265' font-family='Segoe UI' font-size='20' fill='#757575'>Below avg</text>" &
+    "<line x1='550' y1='" & AvgY & "' x2='1150' y2='" & AvgY & "' stroke='#2196F3' stroke-width='2' stroke-dasharray='5,5'/>" &
+    TrendChart &
+    "</svg>"
+
+    // ========================================
+    // 3. DeltaCard
+    // ========================================
+    FUNCTION DeltaCard = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING
+    ) =>
+    
+    VAR CurrentYear = YEAR(TODAY())
+    
+    VAR Revenue_CY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear
+        )
+    
+    VAR Revenue_LY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear - 1
+        )
+    
+    VAR Growth = DIVIDE(Revenue_CY - Revenue_LY, Revenue_LY, 0)
+    VAR Growth_Formatted = FORMAT(ABS(Growth), "0.0%")
+    VAR Growth_Symbol = IF(Growth >= 0, "↑", "↓")
+    VAR Growth_Text = Growth_Symbol & " " & Growth_Formatted
+    
+    VAR Growth_BG_Color = IF(Growth >= 0, "#A8E6CF", "#FFB3BA")
+    VAR Growth_Text_Color = IF(Growth >= 0, "#00783E", "#C41E3A")
+    
+    VAR Revenue_CY_Display = FORMAT(Revenue_CY, "$#,0")
+    VAR Revenue_LY_Display = FORMAT(Revenue_LY, "$#,0")
+    
+    VAR MonthlyData = 
+        ADDCOLUMNS(
+            UNION(
+                ROW("Month", 1, "MonthLabel", "J"),
+                ROW("Month", 2, "MonthLabel", "F"),
+                ROW("Month", 3, "MonthLabel", "M"),
+                ROW("Month", 4, "MonthLabel", "A"),
+                ROW("Month", 5, "MonthLabel", "M"),
+                ROW("Month", 6, "MonthLabel", "J"),
+                ROW("Month", 7, "MonthLabel", "J"),
+                ROW("Month", 8, "MonthLabel", "A"),
+                ROW("Month", 9, "MonthLabel", "S"),
+                ROW("Month", 10, "MonthLabel", "O"),
+                ROW("Month", 11, "MonthLabel", "N"),
+                ROW("Month", 12, "MonthLabel", "D")
+            ),
+            "Revenue_CY", 
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear
+                ),
+            "Revenue_LY",
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear - 1
+                )
+        )
+    
+    VAR MonthlyWithDelta = ADDCOLUMNS(MonthlyData, "Delta", [Revenue_CY] - [Revenue_LY])
+    VAR MaxDelta = MAXX(MonthlyWithDelta, ABS([Delta]))
+    VAR MaxBarHeight = 180
+    VAR BaselineY = 130
+    
+    VAR DeltaChart = 
+        CONCATENATEX(
+            MonthlyWithDelta,
+            VAR MonthNum = [Month]
+            VAR DeltaVal = [Delta]
+            VAR MonthLabel = [MonthLabel]
+            VAR IsPositive = DeltaVal >= 0
+            VAR BarHeight = IF(MaxDelta > 0, ABS(ROUND((DeltaVal / MaxDelta) * MaxBarHeight, 0)), 0)
+            VAR BarY = IF(IsPositive, BaselineY - BarHeight, BaselineY)
+            VAR BarX = 550 + ((MonthNum - 1) * 50)
+            VAR LabelX = BarX + 17.5
+            VAR BarColor = IF(IsPositive, "#4CAF50", "#EF5350")
+            RETURN
+            "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+            "<text x='" & LabelX & "' y='250' font-family='Segoe UI' font-size='18' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+            "", [Month], ASC
+        )
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='400' viewBox='0 0 1200 400'>" &
+    "<rect width='1200' height='400' fill='#FFFFFF' rx='12'/>" &
+    "<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Δ</text>" &
+    "<text x='40' y='160' font-family='Segoe UI' font-size='72' font-weight='700' fill='#000000'>" & Revenue_CY_Display & "</text>" &
+    "<rect x='40' y='180' width='180' height='50' rx='8' fill='" & Growth_BG_Color & "'/>" &
+    "<text x='130' y='213' font-family='Segoe UI' font-size='24' font-weight='600' fill='" & Growth_Text_Color & "' text-anchor='middle'>" & Growth_Text & "</text>" &
+    "<text x='40' y='280' font-family='Segoe UI' font-size='28' fill='#757575'>vs Last year </text>" &
+    "<text x='210' y='280' font-family='Segoe UI' font-size='28' fill='#000000' font-weight='600'>" & Revenue_LY_Display & "</text>" &
+    "<line x1='550' y1='" & BaselineY & "' x2='1150' y2='" & BaselineY & "' stroke='#BDBDBD' stroke-width='2' stroke-dasharray='5,5'/>" &
+    "<rect x='550' y='300' width='20' height='12' fill='#4CAF50' rx='2'/>" &
+    "<text x='580' y='310' font-family='Segoe UI' font-size='16' fill='#424242'>Growth</text>" &
+    "<rect x='680' y='300' width='20' height='12' fill='#EF5350' rx='2'/>" &
+    "<text x='710' y='310' font-family='Segoe UI' font-size='16' fill='#424242'>Decline</text>" &
+    DeltaChart &
+    "</svg>"
+
+    // ========================================
+    // 4. ForecastCard
+    // ========================================
+    FUNCTION ForecastCard = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING
+    ) =>
+    
+    VAR CurrentYear = YEAR(TODAY())
+    VAR CurrentMonth = MONTH(MAX('Table'[Date]))
+    
+    VAR Revenue_CY = 
+        CALCULATE(
+            [TOTAL INGRESOS],
+            YEAR('Table'[Date]) = CurrentYear
+        )
+    
+    VAR MonthlyData = 
+        ADDCOLUMNS(
+            UNION(
+                ROW("Month", 1, "MonthLabel", "J"),
+                ROW("Month", 2, "MonthLabel", "F"),
+                ROW("Month", 3, "MonthLabel", "M"),
+                ROW("Month", 4, "MonthLabel", "A"),
+                ROW("Month", 5, "MonthLabel", "M"),
+                ROW("Month", 6, "MonthLabel", "J"),
+                ROW("Month", 7, "MonthLabel", "J"),
+                ROW("Month", 8, "MonthLabel", "A"),
+                ROW("Month", 9, "MonthLabel", "S"),
+                ROW("Month", 10, "MonthLabel", "O"),
+                ROW("Month", 11, "MonthLabel", "N"),
+                ROW("Month", 12, "MonthLabel", "D")
+            ),
+            "Revenue", 
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear
+                )
+        )
+    
+    VAR Last3MonthsData = FILTER(MonthlyData, [Month] <= CurrentMonth && [Month] > CurrentMonth - 3)
+    VAR Last3MonthsAvg = AVERAGEX(Last3MonthsData, [Revenue])
+    
+    VAR MaxRevenue = MAXX(MonthlyData, [Revenue])
+    VAR MaxBarHeight = 160
+    
+    VAR FirstMonthRev = CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = 1, YEAR('Table'[Date]) = CurrentYear)
+    VAR LastMonthRev = CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = CurrentMonth, YEAR('Table'[Date]) = CurrentYear)
+    VAR GrowthRate = IF(FirstMonthRev > 0 && CurrentMonth > 1, DIVIDE(LastMonthRev - FirstMonthRev, FirstMonthRev * CurrentMonth, 0), 0)
+    
+    VAR ForecastNextMonth = Last3MonthsAvg * (1 + GrowthRate)
+    
+    VAR TrendChart = 
+        CONCATENATEX(
+            MonthlyData,
+            VAR MonthNum = [Month]
+            VAR MonthRev = [Revenue]
+            VAR MonthLabel = [MonthLabel]
+            VAR BarHeight = IF(MaxRevenue > 0, ROUND((MonthRev / MaxRevenue) * MaxBarHeight, 0), 0)
+            VAR BarY = MaxBarHeight - BarHeight + 60
+            VAR BarX = 600 + ((MonthNum - 1) * 48)
+            VAR LabelX = BarX + 17.5
+            VAR IsActual = MonthNum <= CurrentMonth
+            VAR BarColor = IF(IsActual, "#2196F3", "#E3F2FD")
+            VAR BarOpacity = IF(IsActual, "1", "0.4")
+            RETURN
+            "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='" & BarColor & "' opacity='" & BarOpacity & "' rx='4'/>" &
+            IF(MonthNum = CurrentMonth, 
+                "<circle cx='" & (BarX + 17.5) & "' cy='" & (BarY - 10) & "' r='6' fill='#FF5722'/>", 
+                "") &
+            "<text x='" & LabelX & "' y='245' font-family='Segoe UI' font-size='16' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+            "", [Month], ASC
+        )
+    
+    VAR TrendLine = 
+        CONCATENATEX(
+            FILTER(MonthlyData, [Month] <= CurrentMonth),
+            VAR MonthNum = [Month]
+            VAR MonthRev = [Revenue]
+            VAR X = 617.5 + ((MonthNum - 1) * 48)
+            VAR Y = 220 - IF(MaxRevenue > 0, ROUND((MonthRev / MaxRevenue) * MaxBarHeight, 0), 0)
+            RETURN X & "," & Y,
+            " ", [Month], ASC
+        )
+    
+    VAR Revenue_CY_Display = FORMAT(Revenue_CY, "$#,0")
+    VAR Forecast_Display = FORMAT(ForecastNextMonth, "$#,0")
+    VAR GrowthRate_Display = FORMAT(ABS(GrowthRate), "0.0%")
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+    "<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+    "<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Forecast 📊</text>" &
+    "<text x='40' y='150' font-family='Segoe UI' font-size='64' font-weight='700' fill='#2196F3'>" & Revenue_CY_Display & "</text>" &
+    "<text x='40' y='185' font-family='Segoe UI' font-size='22' fill='#757575'>Year to Date</text>" &
+    "<rect x='40' y='220' width='240' height='60' fill='#E8F5E9' rx='8'/>" &
+    "<text x='60' y='245' font-family='Segoe UI' font-size='18' fill='#2E7D32'>Next Month Forecast</text>" &
+    "<text x='60' y='270' font-family='Segoe UI' font-size='28' font-weight='700' fill='#4CAF50'>" & Forecast_Display & "</text>" &
+    "<text x='40' y='330' font-family='Segoe UI' font-size='20' fill='#757575'>Avg Growth Rate: </text>" &
+    "<text x='250' y='330' font-family='Segoe UI' font-size='20' font-weight='600' fill='#FF9800'>" & GrowthRate_Display & "/month</text>" &
+    "<polyline points='" & TrendLine & "' fill='none' stroke='#FF5722' stroke-width='3' stroke-dasharray='5,5'/>" &
+    TrendChart &
+    "<circle cx='600' cy='290' r='4' fill='#FF5722'/>" &
+    "<text x='615' y='295' font-family='Segoe UI' font-size='16' fill='#757575'>Current Month</text>" &
+    "<rect x='600' y='310' width='20' height='12' fill='#E3F2FD' opacity='0.4' rx='2'/>" &
+    "<text x='630' y='320' font-family='Segoe UI' font-size='16' fill='#757575'>Projected</text>" &
+    "</svg>"
+
+    // ========================================
+    // 5. PerformanceCard
+    // ========================================
+    FUNCTION PerformanceCard = (
+        valueColumn : STRING,
+        dateColumn : STRING,
+        cardTitle : STRING
+    ) =>
+    
+    VAR CurrentYear = YEAR(TODAY())
+    
+    VAR MonthlyData = 
+        ADDCOLUMNS(
+            UNION(
+                ROW("Month", 1, "MonthLabel", "Jan"),
+                ROW("Month", 2, "MonthLabel", "Feb"),
+                ROW("Month", 3, "MonthLabel", "Mar"),
+                ROW("Month", 4, "MonthLabel", "Apr"),
+                ROW("Month", 5, "MonthLabel", "May"),
+                ROW("Month", 6, "MonthLabel", "Jun"),
+                ROW("Month", 7, "MonthLabel", "Jul"),
+                ROW("Month", 8, "MonthLabel", "Aug"),
+                ROW("Month", 9, "MonthLabel", "Sep"),
+                ROW("Month", 10, "MonthLabel", "Oct"),
+                ROW("Month", 11, "MonthLabel", "Nov"),
+                ROW("Month", 12, "MonthLabel", "Dec")
+            ),
+            "Revenue", 
+                VAR M = [Month]
+                RETURN CALCULATE(
+                    [TOTAL INGRESOS],
+                    MONTH('Table'[Date]) = M,
+                    YEAR('Table'[Date]) = CurrentYear
+                )
+        )
+    
+    VAR BestMonth = MAXX(MonthlyData, [Revenue])
+    VAR WorstMonth = MINX(FILTER(MonthlyData, [Revenue] > 0), [Revenue])
+    VAR AvgMonth = AVERAGEX(FILTER(MonthlyData, [Revenue] > 0), [Revenue])
+    
+    VAR BestMonthName = MAXX(FILTER(MonthlyData, [Revenue] = BestMonth), [MonthLabel])
+    VAR WorstMonthName = MAXX(FILTER(MonthlyData, [Revenue] = WorstMonth), [MonthLabel])
+    
+    VAR Variances = BestMonth - WorstMonth
+    VAR VariancePercent = DIVIDE(Variances, WorstMonth, 0)
+    
+    VAR MaxBarHeight = 180
+    
+    VAR PerformanceChart = 
+        CONCATENATEX(
+            MonthlyData,
+            VAR MonthNum = [Month]
+            VAR MonthRev = [Revenue]
+            VAR MonthLabel = [MonthLabel]
+            VAR BarHeight = IF(BestMonth > 0, ROUND((MonthRev / BestMonth) * MaxBarHeight, 0), 0)
+            VAR BarY = MaxBarHeight - BarHeight + 40
+            VAR BarX = 650 + ((MonthNum - 1) * 50)
+            VAR LabelX = BarX + 17.5
+            VAR BarColor = 
+                IF(MonthRev >= AvgMonth * 1.1, "#4CAF50",
+                IF(MonthRev <= AvgMonth * 0.9, "#EF5350",
+                "#FFC107"))
+            VAR PerformanceLabel = 
+                IF(MonthRev >= AvgMonth * 1.1, "★",
+                IF(MonthRev <= AvgMonth * 0.9, "▼",
+                ""))
+            RETURN
+            "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+            IF(PerformanceLabel <> "", 
+                "<text x='" & LabelX & "' y='" & (BarY - 5) & "' font-family='Segoe UI' font-size='16' fill='" & BarColor & "' text-anchor='middle'>" & PerformanceLabel & "</text>",
+                "") &
+            "<text x='" & LabelX & "' y='250' font-family='Segoe UI' font-size='14' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+            "", [Month], ASC
+        )
+    
+    VAR AvgY = 220 - ROUND((AvgMonth / BestMonth) * MaxBarHeight, 0)
+    
+    VAR Best_Display = FORMAT(BestMonth, "$#,0")
+    VAR Worst_Display = FORMAT(WorstMonth, "$#,0")
+    VAR Avg_Display = FORMAT(AvgMonth, "$#,0")
+    VAR Variance_Display = FORMAT(VariancePercent, "0%")
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+    "<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+    "<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Performance</text>" &
+    "<rect x='40' y='100' width='180' height='80' fill='#E8F5E9' rx='8'/>" &
+    "<text x='130' y='125' font-family='Segoe UI' font-size='16' fill='#2E7D32' text-anchor='middle'>BEST: " & BestMonthName & "</text>" &
+    "<text x='130' y='155' font-family='Segoe UI' font-size='28' font-weight='700' fill='#4CAF50' text-anchor='middle'>" & Best_Display & "</text>" &
+    "<rect x='240' y='100' width='180' height='80' fill='#FFF3E0' rx='8'/>" &
+    "<text x='330' y='125' font-family='Segoe UI' font-size='16' fill='#E65100' text-anchor='middle'>AVG</text>" &
+    "<text x='330' y='155' font-family='Segoe UI' font-size='28' font-weight='700' fill='#FF9800' text-anchor='middle'>" & Avg_Display & "</text>" &
+    "<rect x='440' y='100' width='180' height='80' fill='#FFEBEE' rx='8'/>" &
+    "<text x='530' y='125' font-family='Segoe UI' font-size='16' fill='#B71C1C' text-anchor='middle'>WORST: " & WorstMonthName & "</text>" &
+    "<text x='530' y='155' font-family='Segoe UI' font-size='28' font-weight='700' fill='#EF5350' text-anchor='middle'>" & Worst_Display & "</text>" &
+    "<text x='40' y='230' font-family='Segoe UI' font-size='20' fill='#757575'>Performance Spread: </text>" &
+    "<text x='260' y='230' font-family='Segoe UI' font-size='20' font-weight='700' fill='#2196F3'>" & Variance_Display & "</text>" &
+    "<line x1='650' y1='" & AvgY & "' x2='1250' y2='" & AvgY & "' stroke='#FF9800' stroke-width='2' stroke-dasharray='8,4'/>" &
+    "<text x='1100' y='" & (AvgY - 5) & "' font-family='Segoe UI' font-size='14' fill='#FF9800'>Average</text>" &
+    PerformanceChart &
+    "<rect x='650' y='280' width='15' height='15' fill='#4CAF50' rx='2'/>" &
+    "<text x='675' y='292' font-family='Segoe UI' font-size='16' fill='#757575'>High ★</text>" &
+    "<rect x='780' y='280' width='15' height='15' fill='#FFC107' rx='2'/>" &
+    "<text x='805' y='292' font-family='Segoe UI' font-size='16' fill='#757575'>Normal</text>" &
+    "<rect x='910' y='280' width='15' height='15' fill='#EF5350' rx='2'/>" &
+    "<text x='935' y='292' font-family='Segoe UI' font-size='16' fill='#757575'>Low ▼</text>" &
+    "</svg>"
+
+// ========================================
+// 6. PercentCard
+// ========================================
+FUNCTION PercentCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR Revenue_CY = 
+    CALCULATE(
+        [TOTAL INGRESOS],
+        YEAR('Table'[Date]) = CurrentYear
+    )
+
+VAR Revenue_LY = 
+    CALCULATE(
+        [TOTAL INGRESOS],
+        YEAR('Table'[Date]) = CurrentYear - 1
+    )
+
+VAR Growth = DIVIDE(Revenue_CY - Revenue_LY, Revenue_LY, 0)
+VAR Growth_Formatted = FORMAT(ABS(Growth), "0.0%")
+VAR Growth_Symbol = IF(Growth >= 0, "↑", "↓")
+VAR Growth_Text = Growth_Symbol & " " & Growth_Formatted
+
+VAR Growth_BG_Color = IF(Growth >= 0, "#A8E6CF", "#FFB3BA")
+VAR Growth_Text_Color = IF(Growth >= 0, "#00783E", "#C41E3A")
+
+VAR Revenue_CY_Display = FORMAT(Revenue_CY, "$#,0")
+VAR Revenue_LY_Display = FORMAT(Revenue_LY, "$#,0")
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "J"),
+            ROW("Month", 2, "MonthLabel", "F"),
+            ROW("Month", 3, "MonthLabel", "M"),
+            ROW("Month", 4, "MonthLabel", "A"),
+            ROW("Month", 5, "MonthLabel", "M"),
+            ROW("Month", 6, "MonthLabel", "J"),
+            ROW("Month", 7, "MonthLabel", "J"),
+            ROW("Month", 8, "MonthLabel", "A"),
+            ROW("Month", 9, "MonthLabel", "S"),
+            ROW("Month", 10, "MonthLabel", "O"),
+            ROW("Month", 11, "MonthLabel", "N"),
+            ROW("Month", 12, "MonthLabel", "D")
+        ),
+        "Revenue_CY", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            ),
+        "Revenue_LY",
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear - 1
+            )
+    )
+
+VAR MaxRevenue = MAXX(MonthlyData, MAX([Revenue_CY], [Revenue_LY]))
+VAR MaxBarHeight = 160
+
+VAR BarChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR Rev_CY = [Revenue_CY]
+        VAR Rev_LY = [Revenue_LY]
+        VAR MonthLabel = [MonthLabel]
+        VAR MonthGrowth = IF(Rev_LY > 0, DIVIDE(Rev_CY - Rev_LY, Rev_LY, 0), 0)
+        VAR GrowthPct = FORMAT(ABS(MonthGrowth), "0%")
+        VAR BarHeight_CY = IF(MaxRevenue > 0, ROUND((Rev_CY / MaxRevenue) * MaxBarHeight, 0), 0)
+        VAR BarHeight_LY = IF(MaxRevenue > 0, ROUND((Rev_LY / MaxRevenue) * MaxBarHeight, 0), 0)
+        VAR BarY_CY = MaxBarHeight - BarHeight_CY + 60
+        VAR BarY_LY = MaxBarHeight - BarHeight_LY + 60
+        VAR BarX_CY = 550 + ((MonthNum - 1) * 52)
+        VAR BarX_LY = BarX_CY + 20
+        VAR LabelX = BarX_CY + 20
+        VAR PctColor = IF(MonthGrowth >= 0, "#4CAF50", "#EF5350")
+        VAR PctY = MIN(BarY_CY, BarY_LY) - 8
+        RETURN
+        "<rect x='" & BarX_CY & "' y='" & BarY_CY & "' width='18' height='" & BarHeight_CY & "' fill='#6A1B9A' rx='3'/>" &
+        "<rect x='" & BarX_LY & "' y='" & BarY_LY & "' width='18' height='" & BarHeight_LY & "' fill='#D1C4E9' rx='3'/>" &
+        IF(Rev_LY > 0,
+            "<text x='" & LabelX & "' y='" & PctY & "' font-family='Segoe UI' font-size='12' font-weight='700' fill='" & PctColor & "' text-anchor='middle'>" & GrowthPct & "</text>",
+            "") &
+        "<text x='" & LabelX & "' y='245' font-family='Segoe UI' font-size='18' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='400' viewBox='0 0 1200 400'>" &
+"<rect width='1200' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " % Change</text>" &
+"<text x='40' y='160' font-family='Segoe UI' font-size='72' font-weight='700' fill='#6A1B9A'>" & Revenue_CY_Display & "</text>" &
+"<rect x='40' y='180' width='180' height='50' rx='8' fill='" & Growth_BG_Color & "'/>" &
+"<text x='130' y='213' font-family='Segoe UI' font-size='24' font-weight='600' fill='" & Growth_Text_Color & "' text-anchor='middle'>" & Growth_Text & "</text>" &
+"<text x='40' y='280' font-family='Segoe UI' font-size='28' fill='#757575'>Last year </text>" &
+"<text x='180' y='280' font-family='Segoe UI' font-size='28' fill='#000000' font-weight='600'>" & Revenue_LY_Display & "</text>" &
+"<text x='550' y='30' font-family='Segoe UI' font-size='16' fill='#757575'>Monthly % change shown above bars</text>" &
+"<rect x='550' y='300' width='18' height='12' fill='#6A1B9A' rx='2'/>" &
+"<text x='575' y='310' font-family='Segoe UI' font-size='18' fill='#424242'>" & CurrentYear & "</text>" &
+"<rect x='680' y='300' width='18' height='12' fill='#D1C4E9' rx='2'/>" &
+"<text x='705' y='310' font-family='Segoe UI' font-size='18' fill='#424242'>" & (CurrentYear - 1) & "</text>" &
+BarChart &
+"</svg>"
+
+// ========================================
+// 7. HeatmapCard
+// ========================================
+FUNCTION HeatmapCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan", "Quarter", 1),
+            ROW("Month", 2, "MonthLabel", "Feb", "Quarter", 1),
+            ROW("Month", 3, "MonthLabel", "Mar", "Quarter", 1),
+            ROW("Month", 4, "MonthLabel", "Apr", "Quarter", 2),
+            ROW("Month", 5, "MonthLabel", "May", "Quarter", 2),
+            ROW("Month", 6, "MonthLabel", "Jun", "Quarter", 2),
+            ROW("Month", 7, "MonthLabel", "Jul", "Quarter", 3),
+            ROW("Month", 8, "MonthLabel", "Aug", "Quarter", 3),
+            ROW("Month", 9, "MonthLabel", "Sep", "Quarter", 3),
+            ROW("Month", 10, "MonthLabel", "Oct", "Quarter", 4),
+            ROW("Month", 11, "MonthLabel", "Nov", "Quarter", 4),
+            ROW("Month", 12, "MonthLabel", "Dec", "Quarter", 4)
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR MaxRevenue = MAXX(MonthlyData, [Revenue])
+VAR MinRevenue = MINX(FILTER(MonthlyData, [Revenue] > 0), [Revenue])
+
+VAR Q1_Total = SUMX(FILTER(MonthlyData, [Quarter] = 1), [Revenue])
+VAR Q2_Total = SUMX(FILTER(MonthlyData, [Quarter] = 2), [Revenue])
+VAR Q3_Total = SUMX(FILTER(MonthlyData, [Quarter] = 3), [Revenue])
+VAR Q4_Total = SUMX(FILTER(MonthlyData, [Quarter] = 4), [Revenue])
+
+VAR BestQuarter = MAX(MAX(MAX(Q1_Total, Q2_Total), Q3_Total), Q4_Total)
+
+VAR HeatmapGrid = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR Q = [Quarter]
+        VAR Intensity = IF(MaxRevenue > MinRevenue, DIVIDE(MonthRev - MinRevenue, MaxRevenue - MinRevenue, 0), 0)
+        VAR CellColor = 
+            IF(Intensity >= 0.75, "#1B5E20",
+            IF(Intensity >= 0.50, "#4CAF50",
+            IF(Intensity >= 0.25, "#81C784",
+            "#C8E6C9")))
+        VAR Rowss = INT((MonthNum - 1) / 3)
+        VAR Col = MOD(MonthNum - 1, 3)
+        VAR CellX = 600 + (Col * 200)
+        VAR CellY = 80 + (Rowss * 70)
+        VAR TextX = CellX + 95
+        VAR TextY = CellY + 30
+        VAR ValueY = CellY + 55
+        RETURN
+        "<rect x='" & CellX & "' y='" & CellY & "' width='180' height='60' fill='" & CellColor & "' rx='8'/>" &
+        "<text x='" & TextX & "' y='" & TextY & "' font-family='Segoe UI' font-size='18' font-weight='600' fill='#FFFFFF' text-anchor='middle'>" & MonthLabel & "</text>" &
+        "<text x='" & TextX & "' y='" & ValueY & "' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FFFFFF' text-anchor='middle'>" & FORMAT(MonthRev, "$#,0K") & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Total_Display = FORMAT(Q1_Total + Q2_Total + Q3_Total + Q4_Total, "$#,0")
+VAR BestQ = 
+    IF(BestQuarter = Q1_Total, "Q1",
+    IF(BestQuarter = Q2_Total, "Q2",
+    IF(BestQuarter = Q3_Total, "Q3",
+    "Q4")))
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Heatmap " & CurrentYear & "</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='64' font-weight='700' fill='#1B5E20'>" & Total_Display & "</text>" &
+"<text x='40' y='175' font-family='Segoe UI' font-size='22' fill='#757575'>Total Revenue</text>" &
+"<text x='40' y='230' font-family='Segoe UI' font-size='24' fill='#757575'>Best Quarter: </text>" &
+"<text x='230' y='230' font-family='Segoe UI' font-size='24' font-weight='700' fill='#4CAF50'>" & BestQ & "</text>" &
+"<text x='600' y='50' font-family='Segoe UI' font-size='20' font-weight='600' fill='#424242'>Q1</text>" &
+"<text x='800' y='50' font-family='Segoe UI' font-size='20' font-weight='600' fill='#424242'>Q2</text>" &
+"<text x='1000' y='50' font-family='Segoe UI' font-size='20' font-weight='600' fill='#424242'>Q3</text>" &
+"<text x='1200' y='50' font-family='Segoe UI' font-size='20' font-weight='600' fill='#424242'>Q4</text>" &
+HeatmapGrid &
+"<rect x='40' y='320' width='30' height='20' fill='#C8E6C9' rx='3'/>" &
+"<text x='80' y='335' font-family='Segoe UI' font-size='16' fill='#757575'>Low</text>" &
+"<rect x='150' y='320' width='30' height='20' fill='#81C784' rx='3'/>" &
+"<rect x='200' y='320' width='30' height='20' fill='#4CAF50' rx='3'/>" &
+"<rect x='250' y='320' width='30' height='20' fill='#1B5E20' rx='3'/>" &
+"<text x='290' y='335' font-family='Segoe UI' font-size='16' fill='#757575'>High</text>" &
+"</svg>"
+
+// ========================================
+// 8. MomentumCard  
+// ========================================
+FUNCTION MomentumCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR Revenue_CY = 
+    CALCULATE(
+        [TOTAL INGRESOS],
+        YEAR('Table'[Date]) = CurrentYear
+    )
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR MonthlyWithMomentum = 
+    ADDCOLUMNS(
+        MonthlyData,
+        "PrevRevenue",
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = PrevM,
+                YEAR('Table'[Date]) = IF(M = 1, CurrentYear - 1, CurrentYear)
+            ),
+        "Momentum",
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR PrevRev = CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = PrevM,
+                YEAR('Table'[Date]) = IF(M = 1, CurrentYear - 1, CurrentYear)
+            )
+            RETURN IF(PrevRev > 0, DIVIDE([Revenue] - PrevRev, PrevRev, 0), 0)
+    )
+
+VAR PositiveMomentumCount = COUNTX(FILTER(MonthlyWithMomentum, [Momentum] > 0), [Month])
+VAR AvgMomentum = AVERAGEX(MonthlyWithMomentum, [Momentum])
+VAR MaxMomentum = MAXX(MonthlyWithMomentum, ABS([Momentum]))
+
+VAR MomentumStrength = 
+    IF(PositiveMomentumCount >= 8, "🔥 Strong Upward",
+    IF(PositiveMomentumCount >= 6, "📈 Positive",
+    IF(PositiveMomentumCount >= 5, "➡️ Neutral",
+    IF(PositiveMomentumCount >= 4, "📉 Negative",
+    "❄️ Strong Downward"))))
+
+VAR MaxBarHeight = 140
+
+VAR MomentumChart = 
+    CONCATENATEX(
+        MonthlyWithMomentum,
+        VAR MonthNum = [Month]
+        VAR Mom = [Momentum]
+        VAR MonthLabel = [MonthLabel]
+        VAR IsPositive = Mom >= 0
+        VAR BarHeight = IF(MaxMomentum > 0, ABS(ROUND((Mom / MaxMomentum) * MaxBarHeight, 0)), 0)
+        VAR BarY = IF(IsPositive, 190 - BarHeight, 190)
+        VAR BarX = 550 + ((MonthNum - 1) * 52)
+        VAR LabelX = BarX + 20
+        VAR BarColor = 
+            IF(Mom > 0.15, "#2E7D32",
+            IF(Mom > 0.05, "#66BB6A",
+            IF(Mom > -0.05, "#FDD835",
+            IF(Mom > -0.15, "#FF7043",
+            "#C62828"))))
+        VAR Arrow = 
+            IF(Mom > 0.10, "⬆️",
+            IF(Mom > 0, "↗️",
+            IF(Mom > -0.10, "↘️",
+            "⬇️")))
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='40' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        "<text x='" & LabelX & "' y='" & (BarY - 5) & "' font-family='Segoe UI' font-size='16' text-anchor='middle'>" & Arrow & "</text>" &
+        "<text x='" & LabelX & "' y='365' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(Revenue_CY, "$#,0")
+VAR AvgMomentum_Display = FORMAT(ABS(AvgMomentum), "0.0%")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Momentum</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#2196F3'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='350' height='55' fill='#E3F2FD' rx='8'/>" &
+"<text x='215' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#1565C0' text-anchor='middle'>" & MomentumStrength & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Avg MoM Change: </text>" &
+"<text x='250' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & AvgMomentum_Display & "</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Positive Months: </text>" &
+"<text x='250' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & PositiveMomentumCount & " of 12</text>" &
+"<line x1='550' y1='190' x2='1170' y2='190' stroke='#BDBDBD' stroke-width='2' stroke-dasharray='5,5'/>" &
+"<text x='550' y='40' font-family='Segoe UI' font-size='16' fill='#757575'>Month-over-Month % Change</text>" &
+MomentumChart &
+"</svg>"
+// ========================================
+// 9. ConsistencyCard
+// ========================================
+FUNCTION ConsistencyCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "J"),
+            ROW("Month", 2, "MonthLabel", "F"),
+            ROW("Month", 3, "MonthLabel", "M"),
+            ROW("Month", 4, "MonthLabel", "A"),
+            ROW("Month", 5, "MonthLabel", "M"),
+            ROW("Month", 6, "MonthLabel", "J"),
+            ROW("Month", 7, "MonthLabel", "J"),
+            ROW("Month", 8, "MonthLabel", "A"),
+            ROW("Month", 9, "MonthLabel", "S"),
+            ROW("Month", 10, "MonthLabel", "O"),
+            ROW("Month", 11, "MonthLabel", "N"),
+            ROW("Month", 12, "MonthLabel", "D")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR AvgRevenue = AVERAGEX(MonthlyData, [Revenue])
+VAR Revenue_CY = SUMX(MonthlyData, [Revenue])
+
+VAR VarianceS = 
+    SUMX(
+        MonthlyData,
+        VAR Diff = [Revenue] - AvgRevenue
+        RETURN Diff * Diff
+    ) / 12
+
+VAR StdDevS = SQRT(VarianceS)
+VAR CoeffVariation = DIVIDE(StdDevS, AvgRevenue, 0)
+
+VAR UpperBound = AvgRevenue + StdDevS
+VAR LowerBound = AvgRevenue - StdDevS
+VAR MaxRevenue = MAXX(MonthlyData, [Revenue])
+
+VAR ConsistencyScore = 
+    IF(CoeffVariation < 0.15, "⭐⭐⭐ Excellent",
+    IF(CoeffVariation < 0.25, "⭐⭐ Good",
+    IF(CoeffVariation < 0.35, "⭐ Fair",
+    "⚠️ Volatile")))
+
+VAR WithinRangeCount = COUNTX(FILTER(MonthlyData, [Revenue] >= LowerBound && [Revenue] <= UpperBound), [Month])
+
+VAR MaxBarHeight = 160
+
+VAR UpperY = 220 - IF(MaxRevenue > 0, ROUND((UpperBound / MaxRevenue) * MaxBarHeight, 0), 0)
+VAR LowerY = 220 - IF(MaxRevenue > 0, ROUND((LowerBound / MaxRevenue) * MaxBarHeight, 0), 0)
+VAR AvgY = 220 - IF(MaxRevenue > 0, ROUND((AvgRevenue / MaxRevenue) * MaxBarHeight, 0), 0)
+
+VAR ConsistencyChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR BarHeight = IF(MaxRevenue > 0, ROUND((MonthRev / MaxRevenue) * MaxBarHeight, 0), 0)
+        VAR BarY = 220 - BarHeight
+        VAR BarX = 650 + ((MonthNum - 1) * 50)
+        VAR LabelX = BarX + 17.5
+        VAR IsInRange = MonthRev >= LowerBound && MonthRev <= UpperBound
+        VAR BarColor = IF(IsInRange, "#4CAF50", "#FF9800")
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='35' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        "<text x='" & LabelX & "' y='245' font-family='Segoe UI' font-size='16' fill='#9E9E9E' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(Revenue_CY, "$#,0")
+VAR StdDev_Display = FORMAT(StdDevS, "$#,0")
+VAR CoeffVar_Display = FORMAT(CoeffVariation * 100, "0.0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Consistency</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#4CAF50'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='280' height='55' fill='#E8F5E9' rx='8'/>" &
+"<text x='180' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#2E7D32' text-anchor='middle'>" & ConsistencyScore & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Std Deviation: </text>" &
+"<text x='220' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & StdDev_Display & "</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Coeff. Variation: </text>" &
+"<text x='220' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#2196F3'>" & CoeffVar_Display & "%</text>" &
+"<text x='40' y='320' font-family='Segoe UI' font-size='20' fill='#757575'>Within Range: </text>" &
+"<text x='220' y='320' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & WithinRangeCount & " of 12</text>" &
+"<rect x='650' y='" & (UpperY - 2) & "' width='600' height='2' fill='#2196F3' opacity='0.6'/>" &
+"<text x='1260' y='" & UpperY & "' font-family='Segoe UI' font-size='14' fill='#2196F3'>+1σ</text>" &
+"<rect x='650' y='" & (AvgY - 2) & "' width='600' height='3' fill='#4CAF50'/>" &
+"<text x='1260' y='" & AvgY & "' font-family='Segoe UI' font-size='14' fill='#4CAF50'>Avg</text>" &
+"<rect x='650' y='" & (LowerY - 2) & "' width='600' height='2' fill='#2196F3' opacity='0.6'/>" &
+"<text x='1260' y='" & LowerY & "' font-family='Segoe UI' font-size='14' fill='#2196F3'>-1σ</text>" &
+ConsistencyChart &
+"<rect x='650' y='280' width='20' height='12' fill='#4CAF50' rx='2'/>" &
+"<text x='680' y='290' font-family='Segoe UI' font-size='16' fill='#757575'>Normal Range</text>" &
+"<rect x='830' y='280' width='20' height='12' fill='#FF9800' rx='2'/>" &
+"<text x='860' y='290' font-family='Segoe UI' font-size='16' fill='#757575'>Outlier</text>" &
+"</svg>"
+
+// ========================================
+// 10. VolatilityCard
+// ========================================
+FUNCTION VolatilityCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR MaxRev = MAXX(MonthlyData, [Revenue])
+VAR MinRev = MINX(FILTER(MonthlyData, [Revenue] > 0), [Revenue])
+VAR AvgRev = AVERAGEX(MonthlyData, [Revenue])
+VAR RangeRev = MaxRev - MinRev
+VAR VolatilityIndex = DIVIDE(RangeRev, AvgRev, 0)
+
+VAR VolatilityRating = 
+    IF(VolatilityIndex < 0.3, "🟢 Low Volatility",
+    IF(VolatilityIndex < 0.6, "🟡 Moderate",
+    IF(VolatilityIndex < 1.0, "🟠 High",
+    "🔴 Very High")))
+
+VAR Swings = 
+    COUNTX(
+        FILTER(
+            MonthlyData,
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR PrevRev = CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = PrevM,
+                YEAR('Table'[Date]) = IF(M = 1, CurrentYear - 1, CurrentYear)
+            )
+            RETURN ABS(DIVIDE([Revenue] - PrevRev, PrevRev, 0)) > 0.2
+        ),
+        [Month]
+    )
+
+VAR MaxBarHeight = 180
+VAR BaselineY = 180
+
+VAR VolatilityChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR DevFromAvg = MonthRev - AvgRev
+        VAR IsAbove = DevFromAvg >= 0
+        VAR BarHeight = IF(MaxRev > 0, ABS(ROUND((DevFromAvg / MaxRev) * MaxBarHeight, 0)), 0)
+        VAR BarY = IF(IsAbove, BaselineY - BarHeight, BaselineY)
+        VAR BarX = 600 + ((MonthNum - 1) * 54)
+        VAR LabelX = BarX + 22
+        VAR Intensity = IF(MaxRev > 0, ABS(DevFromAvg) / (MaxRev - MinRev), 0)
+        VAR BarColor = 
+            IF(IsAbove,
+                IF(Intensity > 0.6, "#1B5E20",
+                IF(Intensity > 0.3, "#4CAF50",
+                "#81C784")),
+                IF(Intensity > 0.6, "#B71C1C",
+                IF(Intensity > 0.3, "#EF5350",
+                "#EF9A9A"))
+            )
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        "<text x='" & LabelX & "' y='390' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(SUMX(MonthlyData, [Revenue]), "$#,0")
+VAR VolIndex_Display = FORMAT(VolatilityIndex * 100, "0.0")
+VAR Range_Display = FORMAT(RangeRev, "$#,0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Volatility</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#FF5722'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='320' height='55' fill='#FFF3E0' rx='8'/>" &
+"<text x='200' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#E65100' text-anchor='middle'>" & VolatilityRating & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Volatility Index: </text>" &
+"<text x='230' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & VolIndex_Display & "%</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Range: </text>" &
+"<text x='230' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#2196F3'>" & Range_Display & "</text>" &
+"<text x='40' y='320' font-family='Segoe UI' font-size='20' fill='#757575'>Major Swings: </text>" &
+"<text x='230' y='320' font-family='Segoe UI' font-size='20' font-weight='700' fill='#EF5350'>" & Swings & " months</text>" &
+"<text x='600' y='40' font-family='Segoe UI' font-size='16' fill='#757575'>Deviation from Average</text>" &
+"<line x1='600' y1='" & BaselineY & "' x2='1248' y2='" & BaselineY & "' stroke='#9E9E9E' stroke-width='3'/>" &
+"<text x='1180' y='" & (BaselineY - 8) & "' font-family='Segoe UI' font-size='14' fill='#757575'>Average</text>" &
+VolatilityChart &
+"</svg>"
+
+// ========================================
+// 11. SeasonalityCard
+// ========================================
+FUNCTION SeasonalityCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan", "Season", "Winter"),
+            ROW("Month", 2, "MonthLabel", "Feb", "Season", "Winter"),
+            ROW("Month", 3, "MonthLabel", "Mar", "Season", "Spring"),
+            ROW("Month", 4, "MonthLabel", "Apr", "Season", "Spring"),
+            ROW("Month", 5, "MonthLabel", "May", "Season", "Spring"),
+            ROW("Month", 6, "MonthLabel", "Jun", "Season", "Summer"),
+            ROW("Month", 7, "MonthLabel", "Jul", "Season", "Summer"),
+            ROW("Month", 8, "MonthLabel", "Aug", "Season", "Summer"),
+            ROW("Month", 9, "MonthLabel", "Sep", "Season", "Fall"),
+            ROW("Month", 10, "MonthLabel", "Oct", "Season", "Fall"),
+            ROW("Month", 11, "MonthLabel", "Nov", "Season", "Fall"),
+            ROW("Month", 12, "MonthLabel", "Dec", "Season", "Winter")
+        ),
+        "Rev_Y0", 
+            VAR M = [Month]
+            RETURN CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear),
+        "Rev_Y1", 
+            VAR M = [Month]
+            RETURN CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear - 1),
+        "Rev_Y2", 
+            VAR M = [Month]
+            RETURN CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear - 2),
+        "AvgRev",
+            VAR M = [Month]
+            VAR Y0 = CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear)
+            VAR Y1 = CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear - 1)
+            VAR Y2 = CALCULATE([TOTAL INGRESOS], MONTH('Table'[Date]) = M, YEAR('Table'[Date]) = CurrentYear - 2)
+            RETURN (Y0 + Y1 + Y2) / 3
+    )
+
+VAR OverallAvg = AVERAGEX(MonthlyData, [AvgRev])
+
+VAR WinterAvg = AVERAGEX(FILTER(MonthlyData, [Season] = "Winter"), [AvgRev])
+VAR SpringAvg = AVERAGEX(FILTER(MonthlyData, [Season] = "Spring"), [AvgRev])
+VAR SummerAvg = AVERAGEX(FILTER(MonthlyData, [Season] = "Summer"), [AvgRev])
+VAR FallAvg = AVERAGEX(FILTER(MonthlyData, [Season] = "Fall"), [AvgRev])
+
+VAR StrongestSeason = 
+    IF(WinterAvg >= SpringAvg && WinterAvg >= SummerAvg && WinterAvg >= FallAvg, "❄️ Winter",
+    IF(SpringAvg >= SummerAvg && SpringAvg >= FallAvg, "🌸 Spring",
+    IF(SummerAvg >= FallAvg, "☀️ Summer",
+    "🍂 Fall")))
+
+VAR MaxRev = MAXX(MonthlyData, [AvgRev])
+VAR MaxBarHeight = 150
+
+VAR SeasonalChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR AvgR = [AvgRev]
+        VAR MonthLabel = [MonthLabel]
+        VAR Season = [Season]
+        VAR BarHeight = IF(MaxRev > 0, ROUND((AvgR / MaxRev) * MaxBarHeight, 0), 0)
+        VAR BarY = MaxBarHeight - BarHeight + 80
+        VAR BarX = 600 + ((MonthNum - 1) * 54)
+        VAR LabelX = BarX + 22
+        VAR SeasonColor = 
+            SWITCH(Season,
+                "Winter", "#64B5F6",
+                "Spring", "#81C784",
+                "Summer", "#FFD54F",
+                "Fall", "#FF8A65",
+                "#9E9E9E"
+            )
+        VAR IsAboveAvg = AvgR >= OverallAvg
+        VAR Opacity = IF(IsAboveAvg, "1", "0.5")
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='" & SeasonColor & "' opacity='" & Opacity & "' rx='4'/>" &
+        "<text x='" & LabelX & "' y='260' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(SUMX(MonthlyData, [Rev_Y0]), "$#,0")
+VAR SeasonalityStrength = 
+    VAR MaxSeason = MAX(MAX(MAX(WinterAvg, SpringAvg), SummerAvg), FallAvg)
+    VAR MinSeason = MIN(MIN(MIN(WinterAvg, SpringAvg), SummerAvg), FallAvg)
+    RETURN DIVIDE(MaxSeason - MinSeason, OverallAvg, 0)
+VAR Seasonality_Display = FORMAT(SeasonalityStrength * 100, "0.0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Seasonality</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#7E57C2'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='280' height='55' fill='#EDE7F6' rx='8'/>" &
+"<text x='180' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#5E35B1' text-anchor='middle'>" & StrongestSeason & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Seasonality Index: </text>" &
+"<text x='250' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & Seasonality_Display & "%</text>" &
+"<text x='600' y='50' font-family='Segoe UI' font-size='16' fill='#757575'>3-Year Average by Month</text>" &
+SeasonalChart &
+"<rect x='600' y='300' width='30' height='15' fill='#64B5F6' rx='2'/>" &
+"<text x='640' y='312' font-family='Segoe UI' font-size='16' fill='#757575'>Winter</text>" &
+"<rect x='750' y='300' width='30' height='15' fill='#81C784' rx='2'/>" &
+"<text x='790' y='312' font-family='Segoe UI' font-size='16' fill='#757575'>Spring</text>" &
+"<rect x='900' y='300' width='30' height='15' fill='#FFD54F' rx='2'/>" &
+"<text x='940' y='312' font-family='Segoe UI' font-size='16' fill='#757575'>Summer</text>" &
+"<rect x='1050' y='300' width='30' height='15' fill='#FF8A65' rx='2'/>" &
+"<text x='1090' y='312' font-family='Segoe UI' font-size='16' fill='#757575'>Fall</text>" &
+"</svg>"
+
+// ========================================
+// 12. AccelerationCard
+// ========================================
+FUNCTION AccelerationCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR WithAcceleration = 
+    ADDCOLUMNS(
+        MonthlyData,
+        "GrowthRate",
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR PrevRev = CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = PrevM,
+                YEAR('Table'[Date]) = IF(M = 1, CurrentYear - 1, CurrentYear)
+            )
+            RETURN IF(PrevRev > 0, DIVIDE([Revenue] - PrevRev, PrevRev, 0), 0),
+        "Acceleration",
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR Prev2M = IF(M <= 2, M + 10, M - 2)
+            VAR PrevRev = CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = PrevM,
+                YEAR('Table'[Date]) = IF(M = 1, CurrentYear - 1, CurrentYear)
+            )
+            VAR Prev2Rev = CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = Prev2M,
+                YEAR('Table'[Date]) = IF(M <= 2, CurrentYear - 1, CurrentYear)
+            )
+            VAR GrowthNow = IF(PrevRev > 0, DIVIDE([Revenue] - PrevRev, PrevRev, 0), 0)
+            VAR GrowthPrev = IF(Prev2Rev > 0, DIVIDE(PrevRev - Prev2Rev, Prev2Rev, 0), 0)
+            RETURN GrowthNow - GrowthPrev
+    )
+
+VAR AvgAccel = AVERAGEX(WithAcceleration, [Acceleration])
+VAR PositiveAccelCount = COUNTX(FILTER(WithAcceleration, [Acceleration] > 0), [Month])
+
+VAR AccelTrend = 
+    IF(AvgAccel > 0.05, "🚀 Accelerating Fast",
+    IF(AvgAccel > 0, "📈 Accelerating",
+    IF(AvgAccel > -0.05, "➡️ Stable",
+    IF(AvgAccel > -0.1, "📉 Decelerating",
+    "⚠️ Sharp Decline"))))
+
+VAR MaxAccel = MAXX(WithAcceleration, ABS([Acceleration]))
+VAR MaxBarHeight = 130
+VAR BaselineY = 180
+
+VAR AccelChart = 
+    CONCATENATEX(
+        WithAcceleration,
+        VAR MonthNum = [Month]
+        VAR Accel = [Acceleration]
+        VAR MonthLabel = [MonthLabel]
+        VAR IsPositive = Accel >= 0
+        VAR BarHeight = IF(MaxAccel > 0, ABS(ROUND((Accel / MaxAccel) * MaxBarHeight, 0)), 0)
+        VAR BarY = IF(IsPositive, BaselineY - BarHeight, BaselineY)
+        VAR BarX = 550 + ((MonthNum - 1) * 54)
+        VAR LabelX = BarX + 22
+        VAR Intensity = IF(MaxAccel > 0, ABS(Accel) / MaxAccel, 0)
+        VAR BarColor = 
+            IF(IsPositive,
+                IF(Intensity > 0.6, "#00897B",
+                IF(Intensity > 0.3, "#26A69A",
+                "#80CBC4")),
+                IF(Intensity > 0.6, "#D32F2F",
+                IF(Intensity > 0.3, "#F44336",
+                "#E57373"))
+            )
+        VAR Arrow = IF(Accel > 0.05, "⬆️", IF(Accel < -0.05, "⬇️", ""))
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        IF(Arrow <> "",
+            "<text x='" & LabelX & "' y='" & (IF(IsPositive, BarY - 8, BarY + BarHeight + 20)) & "' font-family='Segoe UI' font-size='18' text-anchor='middle'>" & Arrow & "</text>",
+            "") &
+        "<text x='" & LabelX & "' y='350' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(SUMX(MonthlyData, [Revenue]), "$#,0")
+VAR AvgAccel_Display = FORMAT(ABS(AvgAccel) * 100, "0.0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Acceleration</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#00897B'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='350' height='55' fill='#E0F2F1' rx='8'/>" &
+"<text x='215' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#00695C' text-anchor='middle'>" & AccelTrend & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Avg Acceleration: </text>" &
+"<text x='260' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & AvgAccel_Display & "%</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Positive Months: </text>" &
+"<text x='260' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & PositiveAccelCount & " of 12</text>" &
+"<text x='550' y='50' font-family='Segoe UI' font-size='16' fill='#757575'>Change in Growth Rate (2nd Derivative)</text>" &
+"<line x1='550' y1='" & BaselineY & "' x2='1198' y2='" & BaselineY & "' stroke='#9E9E9E' stroke-width='3'/>" &
+"<text x='1120' y='" & (BaselineY - 8) & "' font-family='Segoe UI' font-size='14' fill='#757575'>Zero Line</text>" &
+AccelChart &
+"</svg>"
+
+// ========================================
+// 13. RunwayCard
+// ========================================
+FUNCTION RunwayCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+VAR CurrentMonth = MONTH(MAX('Table'[Date]))
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR AvgMonthlyRevenue = AVERAGEX(FILTER(MonthlyData, [Month] <= CurrentMonth), [Revenue])
+VAR TotalRevenue = SUMX(MonthlyData, [Revenue])
+VAR BurnRate = AvgMonthlyRevenue
+VAR CashReserve = TotalRevenue
+
+VAR RunwayMonths = IF(BurnRate > 0, DIVIDE(CashReserve, BurnRate, 0), 0)
+VAR RunwayStatus = 
+    IF(RunwayMonths >= 18, "🟢 Excellent",
+    IF(RunwayMonths >= 12, "🟡 Good",
+    IF(RunwayMonths >= 6, "🟠 Warning",
+    "🔴 Critical")))
+
+VAR Last3Months = AVERAGEX(
+    FILTER(MonthlyData, [Month] <= CurrentMonth && [Month] > CurrentMonth - 3),
+    [Revenue]
+)
+VAR BurnTrend = DIVIDE(Last3Months - BurnRate, BurnRate, 0)
+VAR TrendArrow = IF(BurnTrend > 0.1, "📈", IF(BurnTrend < -0.1, "📉", "➡️"))
+
+VAR MaxBarHeight = 160
+VAR MaxRev = MAXX(MonthlyData, [Revenue])
+
+VAR RunwayChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR IsActual = MonthNum <= CurrentMonth
+        VAR BarHeight = IF(MaxRev > 0, ROUND((MonthRev / MaxRev) * MaxBarHeight, 0), 0)
+        VAR ProjectedHeight = IF(MaxRev > 0, ROUND((AvgMonthlyRevenue / MaxRev) * MaxBarHeight, 0), 0)
+        VAR BarY = MaxBarHeight - BarHeight + 60
+        VAR ProjY = MaxBarHeight - ProjectedHeight + 60
+        VAR BarX = 600 + ((MonthNum - 1) * 54)
+        VAR LabelX = BarX + 22
+        RETURN
+        IF(IsActual,
+            "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='#2196F3' rx='4'/>"
+        ,
+            "<rect x='" & BarX & "' y='" & ProjY & "' width='44' height='" & ProjectedHeight & "' fill='#90CAF9' opacity='0.5' rx='4' stroke='#2196F3' stroke-width='2' stroke-dasharray='4,2'/>"
+        ) &
+        "<text x='" & LabelX & "' y='245' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(TotalRevenue, "$#,0")
+VAR BurnRate_Display = FORMAT(BurnRate, "$#,0")
+VAR Runway_Display = FORMAT(RunwayMonths, "0.0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Runway</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#2196F3'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='320' height='55' fill='#E3F2FD' rx='8'/>" &
+"<text x='200' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#1565C0' text-anchor='middle'>" & RunwayStatus & " " & Runway_Display & " months</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Avg Burn Rate: </text>" &
+"<text x='230' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & BurnRate_Display & "/mo</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Trend: </text>" &
+"<text x='230' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & TrendArrow & " " & FORMAT(ABS(BurnTrend), "0.0%") & "</text>" &
+"<text x='600' y='40' font-family='Segoe UI' font-size='16' fill='#757575'>Actual vs Projected Burn</text>" &
+"<line x1='" & (600 + (CurrentMonth * 54)) & "' y1='55' x2='" & (600 + (CurrentMonth * 54)) & "' y2='230' stroke='#FF5722' stroke-width='3' stroke-dasharray='8,4'/>" &
+"<text x='" & (600 + (CurrentMonth * 54) + 10) & "' y='50' font-family='Segoe UI' font-size='14' fill='#FF5722' font-weight='700'>TODAY</text>" &
+RunwayChart &
+"<rect x='600' y='280' width='30' height='15' fill='#2196F3' rx='2'/>" &
+"<text x='640' y='292' font-family='Segoe UI' font-size='16' fill='#757575'>Actual</text>" &
+"<rect x='750' y='280' width='30' height='15' fill='#90CAF9' opacity='0.5' rx='2' stroke='#2196F3' stroke-width='2'/>" &
+"<text x='790' y='292' font-family='Segoe UI' font-size='16' fill='#757575'>Projected</text>" &
+"</svg>"
+
+// ========================================
+// 14. BenchmarkCard
+// ========================================
+FUNCTION BenchmarkCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR Revenue_CY = 
+    CALCULATE(
+        [TOTAL INGRESOS],
+        YEAR('Table'[Date]) = CurrentYear
+    )
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR IndustryAvg = Revenue_CY * 0.85
+VAR TopPerformer = Revenue_CY * 1.20
+VAR LastYearBench = CALCULATE([TOTAL INGRESOS], YEAR('Table'[Date]) = CurrentYear - 1)
+
+VAR VsIndustry = DIVIDE(Revenue_CY - IndustryAvg, IndustryAvg, 0)
+VAR VsTop = DIVIDE(Revenue_CY - TopPerformer, TopPerformer, 0)
+VAR VsLastYear = DIVIDE(Revenue_CY - LastYearBench, LastYearBench, 0)
+
+VAR PerformanceRating = 
+    IF(VsIndustry >= 0.15, "🏆 Leader",
+    IF(VsIndustry >= 0, "⭐ Above Average",
+    IF(VsIndustry >= -0.15, "📊 Average",
+    "⚠️ Below Average")))
+
+VAR MaxValue = MAX(MAX(Revenue_CY, TopPerformer), LastYearBench)
+VAR CurrentPct = DIVIDE(Revenue_CY, MaxValue, 0)
+VAR IndustryPct = DIVIDE(IndustryAvg, MaxValue, 0)
+VAR TopPct = DIVIDE(TopPerformer, MaxValue, 0)
+VAR LastYearPct = DIVIDE(LastYearBench, MaxValue, 0)
+
+VAR GaugeWidth = 500
+VAR CurrentX = 650 + (CurrentPct * GaugeWidth)
+VAR IndustryX = 650 + (IndustryPct * GaugeWidth)
+VAR TopX = 650 + (TopPct * GaugeWidth)
+VAR LastYearX = 650 + (LastYearPct * GaugeWidth)
+
+VAR Revenue_Display = FORMAT(Revenue_CY, "$#,0")
+VAR Industry_Display = FORMAT(IndustryAvg, "$#,0")
+VAR Top_Display = FORMAT(TopPerformer, "$#,0")
+VAR VsIndustry_Display = FORMAT(ABS(VsIndustry), "0.0%")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Benchmark</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#673AB7'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='320' height='55' fill='#EDE7F6' rx='8'/>" &
+"<text x='200' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#5E35B1' text-anchor='middle'>" & PerformanceRating & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>vs Industry: </text>" &
+"<text x='200' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='" & IF(VsIndustry >= 0, "#4CAF50", "#EF5350") & "'>" & IF(VsIndustry >= 0, "+", "") & VsIndustry_Display & "</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>vs Top: </text>" &
+"<text x='200' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='" & IF(VsTop >= 0, "#4CAF50", "#FF9800") & "'>" & IF(VsTop >= 0, "+", "") & FORMAT(ABS(VsTop), "0.0%") & "</text>" &
+
+"<!-- Gauge Bars -->" &
+"<text x='650' y='130' font-family='Segoe UI' font-size='18' font-weight='700' fill='#673AB7'>Current</text>" &
+"<rect x='650' y='140' width='" & (GaugeWidth * CurrentPct) & "' height='30' fill='#673AB7' rx='4'/>" &
+"<text x='" & (CurrentX + 10) & "' y='160' font-family='Segoe UI' font-size='16' fill='#673AB7' font-weight='700'>" & Revenue_Display & "</text>" &
+
+"<text x='650' y='190' font-family='Segoe UI' font-size='16' fill='#2196F3'>Industry Avg</text>" &
+"<rect x='650' y='200' width='" & (GaugeWidth * IndustryPct) & "' height='20' fill='#2196F3' opacity='0.6' rx='3'/>" &
+"<text x='" & (IndustryX + 10) & "' y='215' font-family='Segoe UI' font-size='14' fill='#2196F3'>" & Industry_Display & "</text>" &
+
+"<text x='650' y='240' font-family='Segoe UI' font-size='16' fill='#4CAF50'>Top Performer</text>" &
+"<rect x='650' y='250' width='" & (GaugeWidth * TopPct) & "' height='20' fill='#4CAF50' opacity='0.6' rx='3'/>" &
+"<text x='" & (TopX + 10) & "' y='265' font-family='Segoe UI' font-size='14' fill='#4CAF50'>" & Top_Display & "</text>" &
+
+"<text x='650' y='290' font-family='Segoe UI' font-size='16' fill='#FF9800'>Last Year</text>" &
+"<rect x='650' y='300' width='" & (GaugeWidth * LastYearPct) & "' height='20' fill='#FF9800' opacity='0.6' rx='3'/>" &
+"<text x='" & (LastYearX + 10) & "' y='315' font-family='Segoe UI' font-size='14' fill='#FF9800'>" & FORMAT(LastYearBench, "$#,0") & "</text>" &
+
+"</svg>"
+
+// ========================================
+// 15. DistributionCard
+// ========================================
+FUNCTION DistributionCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR MinRev = MINX(FILTER(MonthlyData, [Revenue] > 0), [Revenue])
+VAR MaxRev = MAXX(MonthlyData, [Revenue])
+VAR RangeSize = (MaxRev - MinRev) / 5
+
+VAR Range1 = MinRev + (RangeSize * 1)
+VAR Range2 = MinRev + (RangeSize * 2)
+VAR Range3 = MinRev + (RangeSize * 3)
+VAR Range4 = MinRev + (RangeSize * 4)
+
+VAR Count1 = COUNTX(FILTER(MonthlyData, [Revenue] <= Range1), [Month])
+VAR Count2 = COUNTX(FILTER(MonthlyData, [Revenue] > Range1 && [Revenue] <= Range2), [Month])
+VAR Count3 = COUNTX(FILTER(MonthlyData, [Revenue] > Range2 && [Revenue] <= Range3), [Month])
+VAR Count4 = COUNTX(FILTER(MonthlyData, [Revenue] > Range3 && [Revenue] <= Range4), [Month])
+VAR Count5 = COUNTX(FILTER(MonthlyData, [Revenue] > Range4), [Month])
+
+VAR MaxCount = MAX(MAX(MAX(MAX(Count1, Count2), Count3), Count4), Count5)
+VAR MaxBarHeight = 180
+
+VAR TotalRevenue = SUMX(MonthlyData, [Revenue])
+VAR MedianRev = MAXX(TOPN(6, MonthlyData, [Revenue], ASC), [Revenue])
+
+VAR Skewness = 
+    IF(MedianRev > (MinRev + MaxRev) / 2, "Right-Skewed 📈",
+    IF(MedianRev < (MinRev + MaxRev) / 2, "Left-Skewed 📉",
+    "Normal Distribution 🔔"))
+
+VAR HistogramChart = 
+    VAR Bins = 
+        UNION(
+            ROW("BinNum", 1, "BinLabel", FORMAT(MinRev, "$#,0K") & "-" & FORMAT(Range1, "$#,0K"), "Count", Count1),
+            ROW("BinNum", 2, "BinLabel", FORMAT(Range1, "$#,0K") & "-" & FORMAT(Range2, "$#,0K"), "Count", Count2),
+            ROW("BinNum", 3, "BinLabel", FORMAT(Range2, "$#,0K") & "-" & FORMAT(Range3, "$#,0K"), "Count", Count3),
+            ROW("BinNum", 4, "BinLabel", FORMAT(Range3, "$#,0K") & "-" & FORMAT(Range4, "$#,0K"), "Count", Count4),
+            ROW("BinNum", 5, "BinLabel", FORMAT(Range4, "$#,0K") & "+", "Count", Count5)
+        )
+    RETURN
+    CONCATENATEX(
+        Bins,
+        VAR BinN = [BinNum]
+        VAR BinL = [BinLabel]
+        VAR Cnt = [Count]
+        VAR BarHeight = IF(MaxCount > 0, ROUND((Cnt / MaxCount) * MaxBarHeight, 0), 0)
+        VAR BarY = MaxBarHeight - BarHeight + 80
+        VAR BarX = 650 + ((BinN - 1) * 120)
+        VAR LabelX = BarX + 50
+        VAR BarColor = 
+            SWITCH(BinN,
+                1, "#EF5350",
+                2, "#FF7043",
+                3, "#FFA726",
+                4, "#66BB6A",
+                5, "#4CAF50",
+                "#9E9E9E"
+            )
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='100' height='" & BarHeight & "' fill='" & BarColor & "' rx='6'/>" &
+        "<text x='" & LabelX & "' y='" & (BarY - 10) & "' font-family='Segoe UI' font-size='24' font-weight='700' fill='" & BarColor & "' text-anchor='middle'>" & Cnt & "</text>" &
+        "<text x='" & LabelX & "' y='290' font-family='Segoe UI' font-size='13' fill='#757575' text-anchor='middle'>" & BinL & "</text>",
+        "", [BinNum], ASC
+    )
+
+VAR Revenue_Display = FORMAT(TotalRevenue, "$#,0")
+VAR Median_Display = FORMAT(MedianRev, "$#,0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Distribution</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#00897B'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='350' height='55' fill='#E0F2F1' rx='8'/>" &
+"<text x='215' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#00695C' text-anchor='middle'>" & Skewness & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Median: </text>" &
+"<text x='150' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#2196F3'>" & Median_Display & "</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Range: </text>" &
+"<text x='150' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF9800'>" & FORMAT(MinRev, "$#,0K") & " - " & FORMAT(MaxRev, "$#,0K") & "</text>" &
+"<text x='650' y='60' font-family='Segoe UI' font-size='20' font-weight='600' fill='#424242'>Revenue Distribution (# of Months)</text>" &
+HistogramChart &
+"<text x='650' y='330' font-family='Segoe UI' font-size='14' fill='#757575'>🔴 Low → 🟢 High</text>" &
+"</svg>"
+
+// ========================================
+// 16. PeaksValleysCard
+// ========================================
+FUNCTION PeaksValleysCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR WithPeaksValleys = 
+    ADDCOLUMNS(
+        MonthlyData,
+        "PrevRev",
+            VAR M = [Month]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            RETURN MAXX(FILTER(MonthlyData, [Month] = PrevM), [Revenue]),
+        "NextRev",
+            VAR M = [Month]
+            VAR NextM = IF(M = 12, 1, M + 1)
+            RETURN MAXX(FILTER(MonthlyData, [Month] = NextM), [Revenue]),
+        "IsPeak",
+            VAR M = [Month]
+            VAR Curr = [Revenue]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR NextM = IF(M = 12, 1, M + 1)
+            VAR Prev = MAXX(FILTER(MonthlyData, [Month] = PrevM), [Revenue])
+            VAR Nextt = MAXX(FILTER(MonthlyData, [Month] = NextM), [Revenue])
+            RETURN Curr > Prev && Curr > Nextt,
+        "IsValley",
+            VAR M = [Month]
+            VAR Curr = [Revenue]
+            VAR PrevM = IF(M = 1, 12, M - 1)
+            VAR NextM = IF(M = 12, 1, M + 1)
+            VAR Prev = MAXX(FILTER(MonthlyData, [Month] = PrevM), [Revenue])
+            VAR Nextt = MAXX(FILTER(MonthlyData, [Month] = NextM), [Revenue])
+            RETURN Curr < Prev && Curr < Nextt
+    )
+
+VAR PeakCount = COUNTX(FILTER(WithPeaksValleys, [IsPeak]), [Month])
+VAR ValleyCount = COUNTX(FILTER(WithPeaksValleys, [IsValley]), [Month])
+VAR TotalRevenue = SUMX(MonthlyData, [Revenue])
+
+VAR Pattern = 
+    IF(PeakCount + ValleyCount <= 3, "🟢 Stable Pattern",
+    IF(PeakCount + ValleyCount <= 6, "🟡 Moderate Cycles",
+    "🔴 Highly Cyclical"))
+
+VAR MaxRev = MAXX(MonthlyData, [Revenue])
+VAR MaxBarHeight = 160
+
+VAR PeaksChart = 
+    CONCATENATEX(
+        WithPeaksValleys,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR IsPk = [IsPeak]
+        VAR IsVl = [IsValley]
+        VAR BarHeight = IF(MaxRev > 0, ROUND((MonthRev / MaxRev) * MaxBarHeight, 0), 0)
+        VAR BarY = MaxBarHeight - BarHeight + 70
+        VAR BarX = 550 + ((MonthNum - 1) * 56)
+        VAR LabelX = BarX + 22
+        VAR BarColor = 
+            IF(IsPk, "#4CAF50",
+            IF(IsVl, "#EF5350",
+            "#2196F3"))
+        VAR Marker = 
+            IF(IsPk, "⬆️",
+            IF(IsVl, "⬇️",
+            ""))
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        IF(Marker <> "",
+            "<text x='" & LabelX & "' y='" & (BarY - 10) & "' font-family='Segoe UI' font-size='20' text-anchor='middle'>" & Marker & "</text>",
+            "") &
+        "<text x='" & LabelX & "' y='260' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR TrendLine = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR X = 572 + ((MonthNum - 1) * 56)
+        VAR Y = 230 - IF(MaxRev > 0, ROUND((MonthRev / MaxRev) * MaxBarHeight, 0), 0)
+        RETURN X & "," & Y,
+        " ", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(TotalRevenue, "$#,0")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Peaks & Valleys</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#2196F3'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='320' height='55' fill='#E3F2FD' rx='8'/>" &
+"<text x='200' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#1565C0' text-anchor='middle'>" & Pattern & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Peaks: </text>" &
+"<text x='140' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & PeakCount & " ⬆️</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>Valleys: </text>" &
+"<text x='140' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#EF5350'>" & ValleyCount & " ⬇️</text>" &
+"<polyline points='" & TrendLine & "' fill='none' stroke='#9E9E9E' stroke-width='2'/>" &
+PeaksChart &
+"<rect x='550' y='300' width='20' height='12' fill='#4CAF50' rx='2'/>" &
+"<text x='580' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>Peak</text>" &
+"<rect x='680' y='300' width='20' height='12' fill='#EF5350' rx='2'/>" &
+"<text x='710' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>Valley</text>" &
+"<rect x='810' y='300' width='20' height='12' fill='#2196F3' rx='2'/>" &
+"<text x='840' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>Normal</text>" &
+"</svg>"
+
+// ========================================
+// 17. TargetTrackerCard
+// ========================================
+FUNCTION TargetTrackerCard = (
+    valueColumn : STRING,
+    dateColumn : STRING,
+    cardTitle : STRING
+) =>
+
+VAR CurrentYear = YEAR(TODAY())
+VAR CurrentMonth = MONTH(MAX('Table'[Date]))
+
+VAR Revenue_CY = 
+    CALCULATE(
+        [TOTAL INGRESOS],
+        YEAR('Table'[Date]) = CurrentYear
+    )
+
+VAR MonthlyData = 
+    ADDCOLUMNS(
+        UNION(
+            ROW("Month", 1, "MonthLabel", "Jan"),
+            ROW("Month", 2, "MonthLabel", "Feb"),
+            ROW("Month", 3, "MonthLabel", "Mar"),
+            ROW("Month", 4, "MonthLabel", "Apr"),
+            ROW("Month", 5, "MonthLabel", "May"),
+            ROW("Month", 6, "MonthLabel", "Jun"),
+            ROW("Month", 7, "MonthLabel", "Jul"),
+            ROW("Month", 8, "MonthLabel", "Aug"),
+            ROW("Month", 9, "MonthLabel", "Sep"),
+            ROW("Month", 10, "MonthLabel", "Oct"),
+            ROW("Month", 11, "MonthLabel", "Nov"),
+            ROW("Month", 12, "MonthLabel", "Dec")
+        ),
+        "Revenue", 
+            VAR M = [Month]
+            RETURN CALCULATE(
+                [TOTAL INGRESOS],
+                MONTH('Table'[Date]) = M,
+                YEAR('Table'[Date]) = CurrentYear
+            )
+    )
+
+VAR AnnualTarget = CALCULATE([TOTAL INGRESOS], YEAR('Table'[Date]) = CurrentYear - 1) * 1.10
+VAR MonthlyTarget = AnnualTarget / 12
+VAR ProgressToTarget = DIVIDE(Revenue_CY, AnnualTarget, 0)
+VAR ExpectedProgress = CurrentMonth / 12
+VAR Gap = ProgressToTarget - ExpectedProgress
+
+VAR OnTrackStatus = 
+    IF(Gap >= 0.05, "🎯 Ahead of Target",
+    IF(Gap >= 0, "✅ On Track",
+    IF(Gap >= -0.05, "⚠️ Slightly Behind",
+    "🚨 Behind Target")))
+
+VAR MonthsOnTarget = COUNTX(FILTER(MonthlyData, [Revenue] >= MonthlyTarget), [Month])
+VAR MonthsAhead = COUNTX(FILTER(MonthlyData, [Revenue] >= MonthlyTarget * 1.1), [Month])
+
+VAR MaxRev = MAX(MAXX(MonthlyData, [Revenue]), MonthlyTarget * 1.2)
+VAR MaxBarHeight = 160
+
+VAR TargetY = 220 - IF(MaxRev > 0, ROUND((MonthlyTarget / MaxRev) * MaxBarHeight, 0), 0)
+
+VAR TargetChart = 
+    CONCATENATEX(
+        MonthlyData,
+        VAR MonthNum = [Month]
+        VAR MonthRev = [Revenue]
+        VAR MonthLabel = [MonthLabel]
+        VAR BarHeight = IF(MaxRev > 0, ROUND((MonthRev / MaxRev) * MaxBarHeight, 0), 0)
+        VAR BarY = 220 - BarHeight
+        VAR BarX = 600 + ((MonthNum - 1) * 56)
+        VAR LabelX = BarX + 22
+        VAR IsOnTarget = MonthRev >= MonthlyTarget
+        VAR IsAhead = MonthRev >= MonthlyTarget * 1.1
+        VAR BarColor = 
+            IF(IsAhead, "#2E7D32",
+            IF(IsOnTarget, "#66BB6A",
+            "#EF5350"))
+        VAR Badge = 
+            IF(IsAhead, "⭐",
+            IF(IsOnTarget, "✓",
+            ""))
+        RETURN
+        "<rect x='" & BarX & "' y='" & BarY & "' width='44' height='" & BarHeight & "' fill='" & BarColor & "' rx='4'/>" &
+        IF(Badge <> "",
+            "<text x='" & LabelX & "' y='" & (BarY - 8) & "' font-family='Segoe UI' font-size='18' text-anchor='middle'>" & Badge & "</text>",
+            "") &
+        "<text x='" & LabelX & "' y='260' font-family='Segoe UI' font-size='14' fill='#757575' text-anchor='middle'>" & MonthLabel & "</text>",
+        "", [Month], ASC
+    )
+
+VAR Revenue_Display = FORMAT(Revenue_CY, "$#,0")
+VAR Target_Display = FORMAT(AnnualTarget, "$#,0")
+VAR Progress_Display = FORMAT(ProgressToTarget, "0%")
+
+RETURN
+"data:image/svg+xml;utf8," &
+"<svg xmlns='http://www.w3.org/2000/svg' width='1300' height='400' viewBox='0 0 1300 400'>" &
+"<rect width='1300' height='400' fill='#FFFFFF' rx='12'/>" &
+"<text x='40' y='60' font-family='Segoe UI' font-size='48' font-weight='700' fill='#000000'>" & cardTitle & " Target Tracker</text>" &
+"<text x='40' y='140' font-family='Segoe UI' font-size='60' font-weight='700' fill='#FF6F00'>" & Revenue_Display & "</text>" &
+"<rect x='40' y='160' width='350' height='55' fill='#FFF3E0' rx='8'/>" &
+"<text x='215' y='195' font-family='Segoe UI' font-size='24' font-weight='600' fill='#E65100' text-anchor='middle'>" & OnTrackStatus & "</text>" &
+"<text x='40' y='250' font-family='Segoe UI' font-size='20' fill='#757575'>Progress: </text>" &
+"<text x='170' y='250' font-family='Segoe UI' font-size='20' font-weight='700' fill='#FF6F00'>" & Progress_Display & " of " & Target_Display & "</text>" &
+"<text x='40' y='285' font-family='Segoe UI' font-size='20' fill='#757575'>On Target: </text>" &
+"<text x='170' y='285' font-family='Segoe UI' font-size='20' font-weight='700' fill='#4CAF50'>" & MonthsOnTarget & " months</text>" &
+"<text x='40' y='320' font-family='Segoe UI' font-size='20' fill='#757575'>Exceeded: </text>" &
+"<text x='170' y='320' font-family='Segoe UI' font-size='20' font-weight='700' fill='#2E7D32'>" & MonthsAhead & " months ⭐</text>" &
+"<line x1='600' y1='" & TargetY & "' x2='1272' y2='" & TargetY & "' stroke='#FF6F00' stroke-width='3' stroke-dasharray='8,4'/>" &
+"<text x='1180' y='" & (TargetY - 8) & "' font-family='Segoe UI' font-size='16' font-weight='700' fill='#FF6F00'>Target</text>" &
+TargetChart &
+"<rect x='600' y='300' width='20' height='12' fill='#2E7D32' rx='2'/>" &
+"<text x='630' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>Ahead ⭐</text>" &
+"<rect x='750' y='300' width='20' height='12' fill='#66BB6A' rx='2'/>" &
+"<text x='780' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>On Track ✓</text>" &
+"<rect x='910' y='300' width='20' height='12' fill='#EF5350' rx='2'/>" &
+"<text x='940' y='310' font-family='Segoe UI' font-size='16' fill='#757575'>Behind</text>" &
+"</svg>"
+
+// ========================================
+// FUNCIÓN SIMPLIFICADA
+// ========================================
+FUNCTION RevenueCard = (
+    cardTitle : STRING,
+    cardType : STRING
+) =>
+RevenueCardSelector("", "", cardTitle, cardType)
+
+// ========================================
+// TEST
+// ========================================
+EVALUATE
+{
+    RevenueCardSelector("", "", "Mis Ingresos", "basic")
+}
