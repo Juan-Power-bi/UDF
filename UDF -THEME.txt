@@ -1,0 +1,291 @@
+DEFINE
+    // ========================================
+    // UDF PRINCIPAL: ThemeLibrary (ACTUALIZADO)
+    // ========================================
+    FUNCTION ThemeLibrary = (
+        themeName : STRING,
+        outputFormat : STRING
+    ) =>
+    SWITCH(
+        themeName,
+        "corporate", CorporateTheme(outputFormat),
+        "ocean", OceanTheme(outputFormat),
+        "sunset", SunsetTheme(outputFormat),
+        "forest", ForestTheme(outputFormat),
+        "purple", PurpleTheme(outputFormat),
+        "monochrome", MonochromeTheme(outputFormat),
+        "vibrant", VibrantTheme(outputFormat),
+        "pastel", PastelTheme(outputFormat),
+        "dark", DarkTheme(outputFormat),
+        "earth", EarthTheme(outputFormat),
+        "candy", CandyTheme(outputFormat),
+        "tech", TechTheme(outputFormat),
+        "autumn", AutumnTheme(outputFormat),
+        "winter", WinterTheme(outputFormat),
+        "tropical", TropicalTheme(outputFormat),
+        "darkmode", DarkModeTheme(outputFormat),
+        "colorblind", ColorblindTheme(outputFormat),
+        "Error: Theme not found"
+    )
+
+    // ========================================
+    // TEMA NUEVO 1: DarkMode (Modo oscuro mejorado)
+    // ========================================
+    FUNCTION DarkModeTheme = (outputFormat : STRING) =>
+    VAR color1 = "#BB86FC"
+    VAR color2 = "#03DAC6"
+    VAR color3 = "#CF6679"
+    VAR color4 = "#6200EE"
+    VAR color5 = "#3700B3"
+    
+    RETURN
+    IF(outputFormat = "svg",
+        ThemePaletteToSVG("Dark Mode", color1, color2, color3, color4, color5),
+        color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5
+    )
+
+    // ========================================
+    // TEMA NUEVO 2: Colorblind (Deuteranopia/Protanopia friendly)
+    // ========================================
+    FUNCTION ColorblindTheme = (outputFormat : STRING) =>
+    VAR color1 = "#0173B2"
+    VAR color2 = "#DE8F05"
+    VAR color3 = "#029E73"
+    VAR color4 = "#CC78BC"
+    VAR color5 = "#ECE133"
+    
+    RETURN
+    IF(outputFormat = "svg",
+        ThemePaletteToSVG("Colorblind Safe", color1, color2, color3, color4, color5),
+        color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5
+    )
+
+    // ========================================
+    // [RESTO DE TEMAS ANTERIORES]
+    // ========================================
+    
+    FUNCTION CorporateTheme = (outputFormat : STRING) =>
+    VAR color1 = "#0D47A1"
+    VAR color2 = "#1565C0"
+    VAR color3 = "#1976D2"
+    VAR color4 = "#42A5F5"
+    VAR color5 = "#90CAF9"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Corporate", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION OceanTheme = (outputFormat : STRING) =>
+    VAR color1 = "#006064"
+    VAR color2 = "#00838F"
+    VAR color3 = "#00ACC1"
+    VAR color4 = "#26C6DA"
+    VAR color5 = "#4DD0E1"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Ocean", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION SunsetTheme = (outputFormat : STRING) =>
+    VAR color1 = "#BF360C"
+    VAR color2 = "#E64A19"
+    VAR color3 = "#FF6F00"
+    VAR color4 = "#FF9800"
+    VAR color5 = "#FFB74D"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Sunset", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION ForestTheme = (outputFormat : STRING) =>
+    VAR color1 = "#1B5E20"
+    VAR color2 = "#2E7D32"
+    VAR color3 = "#388E3C"
+    VAR color4 = "#66BB6A"
+    VAR color5 = "#81C784"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Forest", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION PurpleTheme = (outputFormat : STRING) =>
+    VAR color1 = "#4A148C"
+    VAR color2 = "#6A1B9A"
+    VAR color3 = "#8E24AA"
+    VAR color4 = "#AB47BC"
+    VAR color5 = "#CE93D8"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Purple", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION MonochromeTheme = (outputFormat : STRING) =>
+    VAR color1 = "#212121"
+    VAR color2 = "#424242"
+    VAR color3 = "#616161"
+    VAR color4 = "#757575"
+    VAR color5 = "#9E9E9E"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Monochrome", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION VibrantTheme = (outputFormat : STRING) =>
+    VAR color1 = "#D500F9"
+    VAR color2 = "#651FFF"
+    VAR color3 = "#00E5FF"
+    VAR color4 = "#00E676"
+    VAR color5 = "#FFEA00"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Vibrant", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION PastelTheme = (outputFormat : STRING) =>
+    VAR color1 = "#F48FB1"
+    VAR color2 = "#CE93D8"
+    VAR color3 = "#9FA8DA"
+    VAR color4 = "#80CBC4"
+    VAR color5 = "#A5D6A7"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Pastel", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION DarkTheme = (outputFormat : STRING) =>
+    VAR color1 = "#BB86FC"
+    VAR color2 = "#03DAC6"
+    VAR color3 = "#CF6679"
+    VAR color4 = "#6200EE"
+    VAR color5 = "#018786"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Dark", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION EarthTheme = (outputFormat : STRING) =>
+    VAR color1 = "#3E2723"
+    VAR color2 = "#5D4037"
+    VAR color3 = "#795548"
+    VAR color4 = "#A1887F"
+    VAR color5 = "#BCAAA4"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Earth", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION CandyTheme = (outputFormat : STRING) =>
+    VAR color1 = "#E91E63"
+    VAR color2 = "#FF4081"
+    VAR color3 = "#9C27B0"
+    VAR color4 = "#FF6E40"
+    VAR color5 = "#FFD740"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Candy", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION TechTheme = (outputFormat : STRING) =>
+    VAR color1 = "#00BCD4"
+    VAR color2 = "#2196F3"
+    VAR color3 = "#3F51B5"
+    VAR color4 = "#9C27B0"
+    VAR color5 = "#E91E63"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Tech", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION AutumnTheme = (outputFormat : STRING) =>
+    VAR color1 = "#BF360C"
+    VAR color2 = "#D84315"
+    VAR color3 = "#F4511E"
+    VAR color4 = "#FF6F00"
+    VAR color5 = "#FFA726"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Autumn", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION WinterTheme = (outputFormat : STRING) =>
+    VAR color1 = "#01579B"
+    VAR color2 = "#0277BD"
+    VAR color3 = "#0288D1"
+    VAR color4 = "#29B6F6"
+    VAR color5 = "#81D4FA"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Winter", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    FUNCTION TropicalTheme = (outputFormat : STRING) =>
+    VAR color1 = "#00897B"
+    VAR color2 = "#26A69A"
+    VAR color3 = "#FFB300"
+    VAR color4 = "#FF6F00"
+    VAR color5 = "#EC407A"
+    RETURN IF(outputFormat = "svg", ThemePaletteToSVG("Tropical", color1, color2, color3, color4, color5), color1 & "|" & color2 & "|" & color3 & "|" & color4 & "|" & color5)
+
+    // ========================================
+    // HELPER: ThemePaletteToSVG - DISEÑO MEJORADO
+    // ========================================
+    FUNCTION ThemePaletteToSVG = (
+        themeName : STRING,
+        color1 : STRING,
+        color2 : STRING,
+        color3 : STRING,
+        color4 : STRING,
+        color5 : STRING
+    ) =>
+    VAR widthTotal = 400
+    VAR heightTotal = 220
+    VAR swatchW = 65
+    VAR swatchH = 90
+    VAR startXPos = 25
+    VAR startYPos = 75
+    VAR gapSpace = 8
+    VAR shadowOpacity = "0.08"
+    
+    RETURN
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " & widthTotal & " " & heightTotal & "' width='" & widthTotal & "' height='" & heightTotal & "'>" &
+    
+    // Gradiente de fondo sutil
+    "<defs>" &
+    "<linearGradient id='bg' x1='0%' y1='0%' x2='0%' y2='100%'>" &
+    "<stop offset='0%' style='stop-color:%23F8F9FA;stop-opacity:1'/>" &
+    "<stop offset='100%' style='stop-color:%23FFFFFF;stop-opacity:1'/>" &
+    "</linearGradient>" &
+    "<filter id='shadow'><feDropShadow dx='0' dy='2' stdDeviation='3' flood-opacity='" & shadowOpacity & "'/></filter>" &
+    "</defs>" &
+    
+    // Fondo con gradiente
+    "<rect width='" & widthTotal & "' height='" & heightTotal & "' fill='url(%23bg)' rx='16'/>" &
+    
+    // Borde sutil
+    "<rect width='" & widthTotal & "' height='" & heightTotal & "' fill='none' stroke='%23E0E0E0' stroke-width='1' rx='16'/>" &
+    
+    // Título mejorado con línea decorativa
+    "<text x='25' y='35' font-family='Inter, Segoe UI, system-ui, sans-serif' font-size='22' font-weight='600' fill='%232C3E50' letter-spacing='-0.5'>" & themeName & "</text>" &
+    "<text x='25' y='52' font-family='Inter, Segoe UI, system-ui, sans-serif' font-size='11' font-weight='400' fill='%2395A5A6' letter-spacing='0.5'>COLOR PALETTE</text>" &
+    "<line x1='25' y1='62' x2='375' y2='62' stroke='%23E0E0E0' stroke-width='1'/>" &
+    
+    // Swatch 1
+    "<g filter='url(%23shadow)'>" &
+    "<rect x='" & startXPos & "' y='" & startYPos & "' width='" & swatchW & "' height='" & swatchH & "' fill='" & color1 & "' rx='10'/>" &
+    "</g>" &
+    "<text x='" & (startXPos + swatchW/2) & "' y='" & (startYPos + swatchH + 18) & "' font-family='JetBrains Mono, Consolas, monospace' font-size='10' font-weight='500' fill='%23546E7A' text-anchor='middle'>" & color1 & "</text>" &
+    
+    // Swatch 2
+    "<g filter='url(%23shadow)'>" &
+    "<rect x='" & (startXPos + swatchW + gapSpace) & "' y='" & startYPos & "' width='" & swatchW & "' height='" & swatchH & "' fill='" & color2 & "' rx='10'/>" &
+    "</g>" &
+    "<text x='" & (startXPos + swatchW + gapSpace + swatchW/2) & "' y='" & (startYPos + swatchH + 18) & "' font-family='JetBrains Mono, Consolas, monospace' font-size='10' font-weight='500' fill='%23546E7A' text-anchor='middle'>" & color2 & "</text>" &
+    
+    // Swatch 3 (destacado como color principal)
+    "<g filter='url(%23shadow)'>" &
+    "<rect x='" & (startXPos + (swatchW + gapSpace)*2) & "' y='" & startYPos & "' width='" & swatchW & "' height='" & swatchH & "' fill='" & color3 & "' rx='10' stroke='%232C3E50' stroke-width='2.5'/>" &
+    "</g>" &
+    "<rect x='" & (startXPos + (swatchW + gapSpace)*2 + swatchW/2 - 15) & "' y='" & (startYPos - 8) & "' width='30' height='16' fill='%232C3E50' rx='8'/>" &
+    "<text x='" & (startXPos + (swatchW + gapSpace)*2 + swatchW/2) & "' y='" & (startYPos + 2) & "' font-family='Inter, Segoe UI, system-ui, sans-serif' font-size='9' font-weight='600' fill='%23FFFFFF' text-anchor='middle'>★</text>" &
+    "<text x='" & (startXPos + (swatchW + gapSpace)*2 + swatchW/2) & "' y='" & (startYPos + swatchH + 18) & "' font-family='JetBrains Mono, Consolas, monospace' font-size='10' font-weight='700' fill='%232C3E50' text-anchor='middle'>" & color3 & "</text>" &
+    
+    // Swatch 4
+    "<g filter='url(%23shadow)'>" &
+    "<rect x='" & (startXPos + (swatchW + gapSpace)*3) & "' y='" & startYPos & "' width='" & swatchW & "' height='" & swatchH & "' fill='" & color4 & "' rx='10'/>" &
+    "</g>" &
+    "<text x='" & (startXPos + (swatchW + gapSpace)*3 + swatchW/2) & "' y='" & (startYPos + swatchH + 18) & "' font-family='JetBrains Mono, Consolas, monospace' font-size='10' font-weight='500' fill='%23546E7A' text-anchor='middle'>" & color4 & "</text>" &
+    
+    // Swatch 5
+    "<g filter='url(%23shadow)'>" &
+    "<rect x='" & (startXPos + (swatchW + gapSpace)*4) & "' y='" & startYPos & "' width='" & swatchW & "' height='" & swatchH & "' fill='" & color5 & "' rx='10'/>" &
+    "</g>" &
+    "<text x='" & (startXPos + (swatchW + gapSpace)*4 + swatchW/2) & "' y='" & (startYPos + swatchH + 18) & "' font-family='JetBrains Mono, Consolas, monospace' font-size='10' font-weight='500' fill='%23546E7A' text-anchor='middle'>" & color5 & "</text>" &
+    
+    "</svg>"
+
+    // ========================================
+    // HELPER: MiniPreviewSVG - DISEÑO MEJORADO
+    // ========================================
+    FUNCTION MiniPreviewSVG = (
+        color1 : STRING,
+        color2 : STRING,
+        color3 : STRING,
+        color4 : STRING,
+        color5 : STRING
+    ) =>
+    "data:image/svg+xml;utf8," &
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 35' width='110' height='35'>" &
+    "<defs><filter id='s'><feDropShadow dx='0' dy='1' stdDeviation='1.5' flood-opacity='0.1'/></filter></defs>" &
+    "<rect width='110' height='35' fill='%23F5F5F5' rx='6'/>" &
+    "<g filter='url(%23s)'>" &
+    "<rect x='5' y='7.5' width='18' height='20' fill='" & color1 & "' rx='3'/>" &
+    "<rect x='25' y='7.5' width='18' height='20' fill='" & color2 & "' rx='3'/>" &
+    "<rect x='45' y='7.5' width='18' height='20' fill='" & color3 & "' rx='3' stroke='%23333' stroke-width='1.5'/>" &
+    "<rect x='65' y='7.5' width='18' height='20' fill='" & color4 & "' rx='3'/>" &
+    "<rect x='85' y='7.5' width='18' height='20' fill='" & color5 & "' rx='3'/>" &
+    "</g>" &
+    "</svg>"
+
+    FUNCTION Theme = (themeName : STRING) =>
+    ThemeLibrary(themeName, "svg")
+
+EVALUATE { Theme("colorblind") }
